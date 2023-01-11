@@ -44,6 +44,18 @@ app.get("/", (req, res) => {
     res.send("Done");
 })
 
+/* 
+place pagination at the bottom of the overview page
+.search__cars {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    padding: 5em;
+    font-size: .2em;
+}
+*/
+
+
 app.get("/newCars", async (req, res) => {
     console.log("*** newCarsCOntroller.js :: getAllCars ***");
     
@@ -58,47 +70,54 @@ app.get("/newCars", async (req, res) => {
 
         // 1B. Advanced filtering: gte
         let queryString = JSON.stringify(queryObj);
-        // console.log("queryString --", JSON.parse(queryString));  
         queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);  
     
         let query = NewCars.find(JSON.parse(queryString));
-        // console.log(req.query.sort);
   
         // Sorting
-        // price, cc, mileage, capacity, rating              
         if (req.query.sort) {  
-            // console.log("sort present");     
             query = query.sort(req.query.sort);
         }       
+
+        // ==== Execute the query   ====
+        let cars = await query;
+        let totalCars = cars.length;
                 
         // Pagination
         const page = req.query.page * 1 || 1;    
         const limit = req.query.limit * 1 || 9;    
         const skip = (page - 1) * limit;
-     
-        
+
+        let paginationActiveBtn = page;
 
         query = query.skip(skip).limit(limit);
-        // console.log("query", JSON.stringify(query));
     
-        // ==== Execute the query   ====
-        const cars = await query;
+        // ==== Execute the query with pagination   ====
+        cars = await query;
 
         // ==== Constructing pagination URL   ====
         let paginateURL = req.protocol + '://' + req.get('host') + req.originalUrl;
         // if queryString is not present      
-        if (Object.keys(req.query).length === 0) {   
-            paginateURL = paginateURL + "?";    
+        if (Object.keys(req.query).length === 0) {       
+            paginateURL = paginateURL + "?"; 
         } else if (!req.query.page) {   
             paginateURL = paginateURL + "&";   
         } else {   
             paginateURL = paginateURL.split("page")[0];
         }
+
+        let paginationBtnCount = totalCars / 9;
+        if (totalCars % 9 !== 0) {
+            paginationBtnCount = Math.floor(paginationBtnCount) + 1;
+        } 
+        console.log("length", totalCars, "paginationBtnCount",paginationBtnCount);
         
         res.status(200).render("overview", {  
             title: "New Cars",          
             length: cars.length, 
             paginateURL,
+            paginationBtnCount,
+            paginationActiveBtn,
             cars: cars
         });
     } catch (err) {
